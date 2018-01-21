@@ -1,0 +1,2 @@
+# NXPcodes
+NXP,smartcar
