@@ -4,8 +4,7 @@
 
 using namespace std;
 
-//在这里改了一下
-//还有这里
+
 
 #define WHITE '1'
 #define BLACK '0'
