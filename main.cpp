@@ -1,11 +1,27 @@
 #include <iostream>
 #include <fstream>
+#include <math.h>
 
 using namespace std;
 
 #define WHITE '1'
 #define BLACK '0'
 #define top_line 10
+
+int imgnew[60][80]; // ±£´æ´¦Àí¹ıºóµÄÈüµÀĞÅÏ¢£¬Ğ´Èë¶ÔÓ¦µÄ*D.txt
+
+/*void initimg();*/
+void imgdeal();
+void judgecircuit_cross();
+int slope(unsigned char img[][80], int temp[100]);
+void crossdeal();
+void judgeFLAG();
+void judgebarrier();
+void crossdeal();
+void barrierdeal_L();
+
+int FLAG = 0;
+
 unsigned char img[60][80];
 int L_edge[60] = {-1}, R_edge[60] = {-1}, Mid_Line[60];
 
@@ -13,251 +29,544 @@ void Road();
 int Edge_Find_1(int, char, int);
 int Next_Point(int, int, char);
 void Correct();
-
 int main()
 {
+	for (int i = 0; i < 60; i++)
+	{
+		L_edge[i] = -1;
+		R_edge[i] = -1;
+	}
+	ifstream infile("019C.txt");
+	printf("%s\n", infile.is_open() ? "open success" : "open fail");
+	for (int i = 0; i < 60; i++)
+		for (int j = 0; j < 80; j++)
+			infile >> img[i][j];
+	infile.close();
+	for (int i = 0; i < 60; i++)
+	{
+		cout << endl;
+		for (int j = 0; j < 80; j++)
+			cout << img[i][j] << "_";
+	}
 
-    for (int i = 0; i < 60; i++)
-    {
-        L_edge[i] = -1;
-        R_edge[i] = -1;
-    }
-    ifstream infile("C:\\Users\\Administrator\\Desktop\\èµ›é“ä¿¡æ¯\\èµ›é“æ•°å­—ä¿¡æ¯.txt");
-    printf("%s\n", infile.is_open() ? "open success" : "open fail");
-    for (int i = 0; i < 60; i++)
-        for (int j = 0; j < 80; j++)
-            infile >> img[i][j];
-    infile.close();
-    for (int i = 0; i < 60; i++)
-    {
-        cout << endl;
-        for (int j = 0; j < 80; j++)
-            cout << img[i][j] << "_";
-    }
+	Road();
+	imgdeal();
+	judgecircuit_cross();
+	judgebarrier();
+	judgeFLAG();
 
-    Road();
+	for (int line = top_line; line < 60; line++)
+	{
+		for (int counter = 0; counter < 80; counter++)
+		{
+			if (counter == 40)
+			{
+				cout << "|";
+			}
+			else if (counter == L_edge[line])
+			{
+				cout << " L";
+			}
+			else if (counter == Mid_Line[line])
+			{
+				cout << "M";
+			}
+			else if (counter == R_edge[line])
+			{
+				cout << " R";
+			}
+			else
+				cout << "  ";
+			if (counter == 79)
+				cout << endl;
+		}
+	}
+	for (int line = top_line; line < 60; line++)
+	{
+		cout << L_edge[line] << "   " << R_edge[line] << endl;
+	}
 
-    for (int line = top_line; line < 60; line++)
-    {
-        for (int counter = 0; counter < 80; counter++)
-        {
+	printf("over\n");
 
-            if (counter == L_edge[line])
-            {
-                cout << " L";
-            }
-            else if (counter == R_edge[line])
-            {
-                cout << " R";
-            }
-            else
-                cout << "  ";
-            if (counter == 79)
-                cout << endl;
-        }
-    }
-    for (int line = top_line; line < 60; line++)
-    {
-        cout << L_edge[line] << "   " << R_edge[line] << endl;
-    }
-
-    printf("over\n");
-
-    return 0;
+	return 0;
 }
 
-//è¾¹æ²¿æœç´¢åˆ¤æ–­èµ›é“
-//ç¯å²›åˆ©ç”¨é™€èºä»ªè¿›è¡Œåˆ¤æ–­
-//cur_is_comingä¸ºåˆ¤æ–­ç¯å²›çš„flagï¼Œin_the_curä¸ºåˆ¤æ–­åå­—è·¯å£å’Œå‡ºç¯å²›çš„flagï¼ˆå¯ä¸è¦ï¼Œå› ä¸ºç”¨é™€èºä»ªè½¬300~350åº¦ï¼‰
+//±ßÑØËÑË÷ÅĞ¶ÏÈüµÀ
+//»·µºÀûÓÃÍÓÂİÒÇ½øĞĞÅĞ¶Ï
+//cur_is_comingÎªÅĞ¶Ï»·µºµÄflag£¬in_the_curÎªÅĞ¶ÏÊ®×ÖÂ·¿ÚºÍ³ö»·µºµÄflag£¨¿É²»Òª£¬ÒòÎªÓÃÍÓÂİÒÇ×ª300~350¶È£©
 void Road()
 {
-    /*
-    åŠŸèƒ½ï¼šå¯»æ‰¾å›¾åƒçš„è¾¹ç•Œï¼Œå‚¨å­˜åœ¨ L_edge[60],R_edge[60],Mid_Line[60]ä¸‰ä¸ªæ•°ç»„ä¸­ï¼›
+	/*
+    ¹¦ÄÜ£ºÑ°ÕÒÍ¼ÏñµÄ±ß½ç£¬´¢´æÔÚ L_edge[60],R_edge[60],Mid_Line[60]Èı¸öÊı×éÖĞ£»
 
     */
-    int row = 60 - 1; //top_lineæ˜¯æœ€é«˜çš„æœ‰æ•ˆè¡Œ
-    int temp_col;
-    while (row > top_line)
-    {
-        temp_col = Edge_Find_1(row, 'L', 40 - 1);
-        if (temp_col == -1)
-        { //å¦‚æœæ²¡è¾¹ç•Œï¼Œå‚¨å­˜è¾¹ç•Œå€¼ä¸º-1ï¼Œrowå‡ä¸€è¡Œ
-            L_edge[row] = -1;
-            row--;
-            continue; //æ²¡è¾¹ç•Œï¼Œç»§ç»­å‘ä¸ŠæŸ¥æ‰¾
-        }
-        else
-        {
-            L_edge[row] = temp_col;
-            int temp_row = Next_Point(row, temp_col, 'L'); //æ¸¡è¿‡ç©ºç™½å±‚ï¼Œä»¥æ­¤ä¸ºèµ·ç‚¹å¼€å§‹æŸ¥æ‰¾è¾¹ç•Œ
-            if (temp_row != 0)
-            {
-                row = temp_row;
-                continue;
-            } //é‡åˆ°æ–­å±‚ï¼Œå½“ä½œç©ºç™½èµ·å§‹åŒºï¼Œå†æ¬¡æŸ¥æ‰¾
-            else
-                break;
-        }
-    }
-    //å³è¾¹ç•ŒåŒ
-    row = 60 - 1;
-    while (row > top_line)
-    {
-        temp_col = Edge_Find_1(row, 'R', 40 - 1);
-        if (temp_col == 80)
-        { //å¦‚æœæ²¡è¾¹ç•Œï¼Œå‚¨å­˜è¾¹ç•Œå€¼ä¸º-1ï¼Œrowå‡ä¸€è¡Œ
-            R_edge[row] = -1;
-            row--;
-            continue; //æ²¡è¾¹ç•Œï¼Œç»§ç»­å‘ä¸ŠæŸ¥æ‰¾
-        }
-        else
-        {
-            R_edge[row] = temp_col;
-            int temp_row = Next_Point(row, temp_col, 'R'); //æ¸¡è¿‡ç©ºç™½å±‚ï¼Œä»¥æ­¤ä¸ºèµ·ç‚¹å¼€å§‹æŸ¥æ‰¾è¾¹ç•Œ
-            if (temp_row != 0)
-            {
-                row = temp_row;
-                continue;
-            } //é‡åˆ°æ–­å±‚ï¼Œå½“ä½œç©ºç™½èµ·å§‹åŒºï¼Œå†æ¬¡æŸ¥æ‰¾
-            else
-                break;
-        }
-    }
-    for (int i = top_line; i < 60; i++)
-        if (L_edge[i] > R_edge[i])
-            L_edge[i] = R_edge[i] = -1;
+	int row = 60 - 1; //top_lineÊÇ×î¸ßµÄÓĞĞ§ĞĞ
+	int temp_col;
+	while (row > top_line)
+	{
+		temp_col = Edge_Find_1(row, 'L', 40 - 1);
+		if (temp_col == -1)
+		{ //Èç¹ûÃ»±ß½ç£¬´¢´æ±ß½çÖµÎª-1£¬row¼õÒ»ĞĞ
+			L_edge[row] = -1;
+			row--;
+			continue; //Ã»±ß½ç£¬¼ÌĞøÏòÉÏ²éÕÒ
+		}
+		else
+		{
+			L_edge[row] = temp_col;
+			int temp_row = Next_Point(row, temp_col, 'L'); //¶É¹ı¿Õ°×²ã£¬ÒÔ´ËÎªÆğµã¿ªÊ¼²éÕÒ±ß½ç
+			if (temp_row != 0)
+			{
+				row = temp_row;
+				continue;
+			} //Óöµ½¶Ï²ã£¬µ±×÷¿Õ°×ÆğÊ¼Çø£¬ÔÙ´Î²éÕÒ
+			else
+				break;
+		}
+	}
+	//ÓÒ±ß½çÍ¬
+	row = 60 - 1;
+	while (row > top_line)
+	{
+		temp_col = Edge_Find_1(row, 'R', 40 - 1);
+		if (temp_col == 80)
+		{ //Èç¹ûÃ»±ß½ç£¬´¢´æ±ß½çÖµÎª-1£¬row¼õÒ»ĞĞ
+			R_edge[row] = -1;
+			row--;
+			continue; //Ã»±ß½ç£¬¼ÌĞøÏòÉÏ²éÕÒ
+		}
+		else
+		{
+			R_edge[row] = temp_col;
+			int temp_row = Next_Point(row, temp_col, 'R'); //¶É¹ı¿Õ°×²ã£¬ÒÔ´ËÎªÆğµã¿ªÊ¼²éÕÒ±ß½ç
+			if (temp_row != 0)
+			{
+				row = temp_row;
+				continue;
+			} //Óöµ½¶Ï²ã£¬µ±×÷¿Õ°×ÆğÊ¼Çø£¬ÔÙ´Î²éÕÒ
+			else
+				break;
+		}
+	}
+	for (int i = top_line; i < 60; i++)
+		if (L_edge[i] > R_edge[i])
+			L_edge[i] = R_edge[i] = -1;
 }
 
 int Edge_Find_1(int row, char which_edge, int start_col)
 {
-    /*
-   åŠŸèƒ½ï¼šä¸ºæ‰¾åˆ°æŸä¸€è¡Œçš„ â€œå·¦â€ æˆ– â€œå³â€è¾¹ç•Œç‚¹
-   å‚æ•°ï¼šå·¦è¾¹ç•Œçš„which_edgeä¸º 'L'ï¼Œå³è¾¹ç•Œä¸º 'R' , start_locä¸ºä¸­çº¿æ³•æ‰¾è¾¹ç•Œçš„èµ·å§‹åˆ—
-   è¿”å›å€¼ï¼šå½“ä¸º-1 æˆ– 80 æ—¶ä¸ºæ²¡æ‰¾åˆ°è¾¹ç•Œï¼Œå¦åˆ™ï¼Œä¸ºæ‰€æ‰¾åˆ°çš„è¾¹ç•Œ
+	/*
+   ¹¦ÄÜ£ºÎªÕÒµ½Ä³Ò»ĞĞµÄ ¡°×ó¡± »ò ¡°ÓÒ¡±±ß½çµã
+   ²ÎÊı£º×ó±ß½çµÄwhich_edgeÎª 'L'£¬ÓÒ±ß½çÎª 'R' , start_locÎªÖĞÏß·¨ÕÒ±ß½çµÄÆğÊ¼ÁĞ
+   ·µ»ØÖµ£ºµ±Îª-1 »ò 80 Ê±ÎªÃ»ÕÒµ½±ß½ç£¬·ñÔò£¬ÎªËùÕÒµ½µÄ±ß½ç
    */
-    if (which_edge == 'R')
-    {
-        if (row < 60 - 1)
-        {
-            while (start_col < 80)
-            { ////////////////////
-                if ((img[row][start_col] == BLACK && img[row][start_col - 1] == WHITE) && ((img[row + 1][start_col] == BLACK || img[row - 1][start_col] == BLACK)))
-                    return start_col;
-                //ç¬¬äºŒä¸ªåˆ¤æ–­æ¡ä»¶æ˜¯ä¸ºäº†æ¶ˆé™¤å™ªéŸ³,å³è¯¥ç‚¹ä¸ºé»‘ç‚¹ï¼Œä½†æ˜¯ä¸Šä¸‹åŒæ—¶ä¸ºç™½è‰²ï¼Œå¯åˆ¤æ–­å…¶ä¸ºå™ªç‚¹
-                else
-                    start_col += 1;
-            }
-        }
-        else
-        {
-            while (start_col < 80)
-            {
-                if (img[row][start_col] == BLACK && img[row][start_col - 1] == WHITE)
-                    return start_col;
-                else
-                    start_col += 1;
-            }
-        }
-    }
+	if (which_edge == 'R')
+	{
+		if (row < 60 - 1)
+		{
+			while (start_col < 80)
+			{ ////////////////////
+				if ((img[row][start_col] == BLACK && img[row][start_col - 1] == WHITE) && ((img[row + 1][start_col] == BLACK || img[row - 1][start_col] == BLACK)))
+					return start_col;
+				//µÚ¶ş¸öÅĞ¶ÏÌõ¼şÊÇÎªÁËÏû³ıÔëÒô,¼´¸ÃµãÎªºÚµã£¬µ«ÊÇÉÏÏÂÍ¬Ê±Îª°×É«£¬¿ÉÅĞ¶ÏÆäÎªÔëµã
+				else
+					start_col += 1;
+			}
+		}
+		else
+		{
+			while (start_col < 80)
+			{
+				if (img[row][start_col] == BLACK && img[row][start_col - 1] == WHITE)
+					return start_col;
+				else
+					start_col += 1;
+			}
+		}
+	}
 
-    if (which_edge == 'L')
-    {
-        if (row < 60 - 1)
-        {
-            while (start_col >= 0)
-            { //////////////
-                if (img[row][start_col] == BLACK && img[row][start_col + 1] == WHITE && ((img[row + 1][start_col] == BLACK || img[row - 1][start_col] == BLACK)))
-                    return start_col;
-                //ç¬¬äºŒä¸ªåˆ¤æ–­æ¡ä»¶æ˜¯ä¸ºäº†æ¶ˆé™¤å™ªéŸ³,å³è¯¥ç‚¹ä¸ºé»‘ç‚¹ï¼Œä½†æ˜¯ä¸Šä¸‹åŒæ—¶ä¸ºç™½è‰²ï¼Œå¯åˆ¤æ–­å…¶ä¸ºå™ªç‚¹
-                else
-                    start_col -= 1;
-            }
-        }
-        else
-        {
-            while (start_col >= 0)
-            {
-                if (img[row][start_col] == BLACK && img[row][start_col + 1] == WHITE)
-                    return start_col;
-                else
-                    start_col -= 1;
-            }
-        }
-    }
-    return start_col;
+	if (which_edge == 'L')
+	{
+		if (row < 60 - 1)
+		{
+			while (start_col >= 0)
+			{ //////////////
+				if (img[row][start_col] == BLACK && img[row][start_col + 1] == WHITE && ((img[row + 1][start_col] == BLACK || img[row - 1][start_col] == BLACK)))
+					return start_col;
+				//µÚ¶ş¸öÅĞ¶ÏÌõ¼şÊÇÎªÁËÏû³ıÔëÒô,¼´¸ÃµãÎªºÚµã£¬µ«ÊÇÉÏÏÂÍ¬Ê±Îª°×É«£¬¿ÉÅĞ¶ÏÆäÎªÔëµã
+				else
+					start_col -= 1;
+			}
+		}
+		else
+		{
+			while (start_col >= 0)
+			{
+				if (img[row][start_col] == BLACK && img[row][start_col + 1] == WHITE)
+					return start_col;
+				else
+					start_col -= 1;
+			}
+		}
+	}
+	return start_col;
 }
 int Next_Point(int row, int col, char which_edge)
 {
-    /*
-    åŠŸèƒ½ï¼šä»æŸä¸€ä¸ªç‚¹æ‰¾åˆ°ä¸Šé¢ä¸€ä¸ªè¾¹ç•Œç‚¹,å¾ªç¯æ‰¾åˆ°è¾¹ç•Œ
-    å‚æ•°ï¼šrow,colåˆ†åˆ«ä¸ºå½“å‰ç‚¹çš„è¡Œåˆ—å€¼ï¼Œwhich_edgeå–å€¼ 'L','R',è¡¨ç¤ºæ˜¯å·¦æˆ–å³è¾¹ç•Œ
-    è¿”å›å€¼ï¼šè¿”å›çš„å€¼è¡¨ç¤ºæ–­å±‚æ‰€åœ¨è¡Œï¼Œä¸º0è¡¨ç¤ºæ­£å¸¸æ‰¾å®Œè¾¹ç•Œ
+	/*
+    ¹¦ÄÜ£º´ÓÄ³Ò»¸öµãÕÒµ½ÉÏÃæÒ»¸ö±ß½çµã,Ñ­»·ÕÒµ½±ß½ç
+    ²ÎÊı£ºrow,col·Ö±ğÎªµ±Ç°µãµÄĞĞÁĞÖµ£¬which_edgeÈ¡Öµ 'L','R',±íÊ¾ÊÇ×ó»òÓÒ±ß½ç
+    ·µ»ØÖµ£º·µ»ØµÄÖµ±íÊ¾¶Ï²ãËùÔÚĞĞ£¬Îª0±íÊ¾Õı³£ÕÒÍê±ß½ç
     */
-    row--;
-    if (which_edge == 'L')
-    {
-        int i = 0;
-        while (row > top_line && col < 80 && col >= 0)
-        {
-            for (i = 0; i < 4; i++)
-            {
-                if (img[row][col + i] == BLACK && img[row][col + i + 1] == WHITE)
-                {
-                    col = col + i;
-                    break;
-                } //å·¦æœ
-                if (img[row][col - i] == BLACK && img[row][col - i + 1] == WHITE)
-                {
-                    col = col - i;
-                    break;
-                } //å³æœ
-            }
-            //å¾ªç¯ç»“æŸï¼Œi=4ï¼Œä¸”ä¸ºç™½ç‚¹æ‰€ä»¥å¯èƒ½ä¸ºæ–­å±‚,é€€å‡ºï¼›
-            if (i == 4)
-            {
-                if (img[row][col] == WHITE)
-                    return row; //è¿”å›æ–­å±‚æ‰€åœ¨è¡Œ
-                else
-                    while (img[row][col] == BLACK && col < 80)
-                        col++;                      //ä¸Šé¢çš„ç‚¹ä¸ºé»‘è‰²ï¼Œå¯åˆ¤æ–­ä¸ºç”±æ€¥å¼¯é€ æˆçš„ä¸è¿ç»­
-            }
-            L_edge[row] = col;
-            row--;
-        }
-    }
-    if (which_edge == 'R')
-    {
-        int i = 0;
-        while (row > top_line && col < 80 && col >= 0)
-        {
-            for (i = 0; i < 4; i++)
-            {
-                if (img[row][col + i] == BLACK && img[row][col + i - 1] == WHITE)
-                {
-                    col = col + i;
-                    break;
-                }
-                if (img[row][col - i] == BLACK && img[row][col - i - 1] == WHITE)
-                {
-                    col = col - i;
-                    break;
-                }
-            }
-            if (i == 4)
-            {
-                if (img[row][col] == WHITE)
-                    return row;
-                else
-                    while (img[row][col] == BLACK && col >= 0)
-                        col--; //ä¸Šé¢çš„ç‚¹ä¸ºé»‘è‰²ï¼Œå¯åˆ¤æ–­ä¸ºç”±æ€¥å¼¯é€ æˆçš„ä¸è¿ç»­
-            }
-            R_edge[row] = col;
-            row--;
-        }
-    }
-    return 0;
+	row--;
+	if (which_edge == 'L')
+	{
+		int i = 0;
+		while (row > top_line && col < 80 && col >= 0)
+		{
+			for (i = 0; i < 4; i++)
+			{
+				if (img[row][col + i] == BLACK && img[row][col + i + 1] == WHITE)
+				{
+					col = col + i;
+					break;
+				} //×óËÑ
+				if (img[row][col - i] == BLACK && img[row][col - i + 1] == WHITE)
+				{
+					col = col - i;
+					break;
+				} //ÓÒËÑ
+			}
+			//Ñ­»·½áÊø£¬i=4£¬ÇÒÎª°×µãËùÒÔ¿ÉÄÜÎª¶Ï²ã,ÍË³ö£»
+			if (i == 4)
+			{
+				if (img[row][col] == WHITE)
+					return row; //·µ»Ø¶Ï²ãËùÔÚĞĞ
+				else
+					while (img[row][col] == BLACK && col < 80)
+						col++; //ÉÏÃæµÄµãÎªºÚÉ«£¬¿ÉÅĞ¶ÏÎªÓÉ¼±ÍäÔì³ÉµÄ²»Á¬Ğø
+			}
+			L_edge[row] = col;
+			row--;
+		}
+	}
+	if (which_edge == 'R')
+	{
+		int i = 0;
+		while (row > top_line && col < 80 && col >= 0)
+		{
+			for (i = 0; i < 4; i++)
+			{
+				if (img[row][col + i] == BLACK && img[row][col + i - 1] == WHITE)
+				{
+					col = col + i;
+					break;
+				}
+				if (img[row][col - i] == BLACK && img[row][col - i - 1] == WHITE)
+				{
+					col = col - i;
+					break;
+				}
+			}
+			if (i == 4)
+			{
+				if (img[row][col] == WHITE)
+					return row;
+				else
+					while (img[row][col] == BLACK && col >= 0)
+						col--; //ÉÏÃæµÄµãÎªºÚÉ«£¬¿ÉÅĞ¶ÏÎªÓÉ¼±ÍäÔì³ÉµÄ²»Á¬Ğø
+			}
+			R_edge[row] = col;
+			row--;
+		}
+	}
+	return 0;
 }
 
-void Corr_Circu()
+void imgdeal()
 {
+	int i = 0, j = 0;
+	for (i = 0; i < 60; i++)
+		for (j = 0; j < 80; j++)
+			imgnew[i][j] = 1;
+
+	for (int row = 10; row <= 60; row++)
+	{
+		if (L_edge[row] != -1)
+		{
+			imgnew[row][L_edge[row]] = 0;
+		}
+		if (R_edge[row] != -1)
+		{
+			imgnew[row][R_edge[row]] = 0;
+		}
+
+		if (L_edge[row] == -1 && R_edge[row] != -1)
+			Mid_Line[row] = R_edge[row] - (row + 3) / 2;
+		else if (L_edge[row] != -1 && R_edge[row] == -1)
+			Mid_Line[row] = L_edge[row] + (row + 3) / 2;
+		else if (L_edge[row] != -1 && R_edge[row] != -1)
+		{
+			Mid_Line[row] = (L_edge[row] + R_edge[row]) / 2;
+			imgnew[row][Mid_Line[row]] = 0;
+		}
+	}
+	for (i = 0; i < 60; i++)
+	{
+		printf("\n");
+		for (j = 0; j < 80; j++)
+			printf("%d ", imgnew[i][j]);
+	}
+}
+//******************************************judge*****************************************
+void judgecircuit_cross()
+{
+	int j, i;												  //i is used for array"left right mid" ; j is used for the judgement of height
+	int templ, tempr;										  //temp is used for left[i-1] || right[i-1] && one side is white
+	int judgecircuitl = 0, judgecircuitr = 0, judgecross = 0; //judge is used for FLAG
+	int kl, kr;												  //kl=slopeleft,kr=sloperight;
+	int jump = 0;
+	int num = 0;
+	for (i = 59; i > 10; i--)
+	{
+		if (L_edge[i] != -1 && R_edge[i] != -1)
+			continue;
+		else if (L_edge[i] == -1 && R_edge[i] == -1)
+		{
+			judgecross++;
+			if (judgecross >= 8)
+				FLAG = 1;
+		}
+
+		else if (L_edge[i] != -1 && R_edge[i] == -1) //ÓÒ»·µº
+		{
+			int j = i;
+			for (; L_edge[j] != -1 && R_edge[j] == -1 && j >= 10; j--, judgecircuitl++)
+				;
+			if (judgecircuitr >= 10)
+				jump = 1;
+			while (L_edge[j] != -1 && R_edge[j] != -1 && j >= 10)
+				j--;
+			i = j;
+			if (jump == 1)
+				for (judgecircuitl = 0; ((L_edge[i] == -1 && R_edge[i] == -1) || (L_edge[i] != -1 && R_edge[i] == -1)) && i >= 10; i--, judgecircuitl++)
+					;
+			if (jump == 1 && judgecircuitr >= 1)
+				FLAG = 2;
+		}
+		else if (L_edge[i] == -1 && R_edge[i] != -1) //×ó»·µº
+		{
+			int j = i;
+			for (; L_edge[j] == -1 && R_edge[j] != -1 && j >= 10; j--, judgecircuitl++)
+				;
+			if (judgecircuitl >= 10)
+				jump = 1;
+			while (L_edge[j] != -1 && R_edge[j] != -1 && j >= 10)
+				j--;
+			i = j;
+			if (jump == 1)
+				for (judgecircuitl = 0; ((L_edge[i] == -1 && R_edge[i] == -1) || (L_edge[i] == -1 && R_edge[i] != -1)) && i >= 10; i--, judgecircuitl++)
+					;
+			if (jump == 1 && judgecircuitl >= 1)
+				FLAG = 3;
+		}
+	}
+}
+void judgebarrier()
+{
+	int row, jump = 0;
+	int leftside[100], rightside[100];
+	int startline = 0, barrierl = 0, barrierr = 0;
+	for (row = 59; row > 24; row--)
+		leftside[row] = rightside[row] = Mid_Line[row];
+
+	for (row = 59; row > 24; row--) //´ÓÖĞ¼äÍùÁ½±ßÑ°¼£
+	{
+		while (leftside[row] > 0 && img[row][leftside[row]] == '1')
+			leftside[row]--;
+		while (rightside[row] > 0 && img[row][rightside[row]] == '1')
+			rightside[row]++;
+	}
+
+	for (row = 59; row > 24; row--)
+	{
+		if (abs(leftside[row] - L_edge[row]) > 5 && abs(R_edge[row] - rightside[row]) > 5)
+			startline++;
+		else if (abs(leftside[row] - L_edge[row]) < 5 && abs(R_edge[row] - rightside[row]) > 5)
+			barrierr++;
+		else if (abs(leftside[row] - L_edge[row]) > 5 && abs(R_edge[row] - rightside[row]) < 5)
+			barrierl++;
+		else if (abs(Mid_Line[row] > 39 && L_edge[row] - Mid_Line[row]) <= 20 || abs(R_edge[row] - Mid_Line[row]) <= 20)
+			barrierl++;
+		else if (abs(Mid_Line[row] < 39 && L_edge[row] - Mid_Line[row]) <= 20 || abs(R_edge[row] - Mid_Line[row]) <= 20)
+			barrierr++;
+	}
+
+	/*	printf("bal=%d bar=%d sta=%d\n",barrierl,barrierr,startline)*/;
+	for (row = 59; row > 24; row--)
+		if (R_edge[row] == -1 || L_edge[row] == -1)
+			jump = 1;
+	if (jump == 0 && startline >= 5)
+		FLAG = 4;
+	if (jump == 0 && barrierl >= 5)
+		FLAG = 5;
+	if (jump == 0 && barrierr >= 5)
+		FLAG = 6;
+}
+//********************************************deal***************************************************
+void crossdeal()
+{
+	int row = 59, tempxl, tempxr, tempy1, tempy2;
+	int xl1 = 0, xl2 = 0, yl1 = 0, yl2 = 0;
+	int xr1 = 0, xr2 = 0, yr1 = 0, yr2 = 0;
+	int kl, kr;
+	int jump = 0, p = 1;
+	while (L_edge[row] != -1 && R_edge[row] != -1 && row >= 10)
+		row--; //find white area
+	tempxl = xl1 = L_edge[row + 1];
+	tempxr = xr1 = R_edge[row + 1];
+	yl1 = yr1 = row + 1;
+	tempy1 = row;
+	if (row == 59)
+	{
+		tempxl = xl1 = 0;
+		tempxr = xr1 = 79;
+		yl1 = yr1 = row;
+		tempy1 = row;
+		jump = 1;
+	}
+
+	while ((L_edge[row] == -1 || R_edge[row] == -1) && row >= 10)
+		row--;
+	xl2 = L_edge[row];
+	xr2 = R_edge[row];
+	tempy2 = yl2 = yr2 = row;
+
+	kl = (yl2 - yl1) / (xl2 - xl1);
+	kr = (yr2 - yr1) / (xr2 - xr1);
+	/*	printf("\nkl=%d,kr=%d\n",kl,kr);*/
+
+	/*	printf("xl1=%d xr1=%d yl1=%d yr1=%d\nxl2=%d xr2=%d yl1=%d yr2=%d\nR_edge[tempy1]=%d",xl1,xr1,yl1,yr1,xl2,xr2,yl2,yr2,R_edge[tempy1]);*/
+	for (; tempy1 >= tempy2; tempy1--)
+	{
+		if (jump == 0)
+		{
+			L_edge[tempy1] = L_edge[tempy1 + 1] - 1 / kl;
+			R_edge[tempy1] = R_edge[tempy1 + 1] - 1 / kr;
+			imgnew[tempy1][L_edge[tempy1]] = 2;
+			imgnew[tempy1][R_edge[tempy1]] = 2;
+		}
+		if (jump == 1)
+		{
+			L_edge[tempy1] = -p / kl;
+			R_edge[tempy1] = 79 - p / kr;
+			imgnew[tempy1][L_edge[tempy1]] = 2;
+			imgnew[tempy1][R_edge[tempy1]] = 2;
+			p++;
+		}
+	}
+	int j;
+	/*	for(int i=0;i<60;i++)
+    {
+    	printf("\n");
+    	for(j=0;j<80;j++)
+    	printf("%d ",imgnew[i][j]);
+	}*/
+
+	FLAG = 0;
+}
+
+void barrierdeal_L()
+{
+	int row = 59;
+	int leftside[100], rightside[100];
+	int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+	int x3 = 0, x4 = 0, y3 = 0, y4 = 0;
+	int judge = 0, jump = 0;
+	float k1 = 0, k2 = 0;
+	int i = 0, j = 0;
+	for (row = 59; row > 24; row--)
+		leftside[row] = rightside[row] = Mid_Line[row];
+
+	for (row = 59; row > 10; row--) //´ÓÖĞ¼äÍùÁ½±ßÑ°¼£
+	{
+		while (leftside[row] > 0 && img[row][leftside[row]] == '1')
+			leftside[row]--;
+		while (rightside[row] < 79 && img[row][rightside[row]] == '1')
+			rightside[row]++;
+	}
+
+	for (row = 59; row >= 24 && abs(leftside[row] - L_edge[row]) <= 5 && abs(R_edge[row] - rightside[row]) <= 5; row--)
+		;
+	x2 = leftside[row];
+	y2 = row;
+	x1 = leftside[59];
+	y1 = 59;
+	/*	printf("x1=%d x2=%d y1=%d y2=%d\n",x1,x2,y1,y2);*/
+	k1 = (x2 - x1) / (y2 - y1);
+	/*	printf("\nk1=%d\n",k1);*/
+	for (row = 58; row >= 24 && abs(leftside[row] - L_edge[row]) <= 5 && abs(R_edge[row] - rightside[row]) <= 5; row--)
+	{
+		L_edge[row] = L_edge[row + 1] - k1;
+		imgnew[row][L_edge[row]] = 2;
+	}
+	/*	for(int i=0;i<60;i++)
+    {
+    	printf("\n");
+    	for(j=0;j<80;j++)
+    	printf("%d ",imgnew[i][j]);
+	}*/
+	for (row = 59; row > 50; row--)
+	{
+		if (row >= 50 && (abs(L_edge[row] - Mid_Line[row]) <= 20 || abs(R_edge[row] - Mid_Line[row]) <= 20))
+			judge++;
+	}
+	if (judge >= 5) //ÅĞ¶ÏÕÏ°­ºÚ±ß½«¹ı
+	{
+
+		for (row = 58; row >= 30 && abs(leftside[row] - L_edge[row]) >= 5 && abs(R_edge[row] - rightside[row]) <= 5; row--)
+			;
+		x3 = leftside[row + 1];
+		y3 = row + 1;
+		x4 = leftside[row - 10];
+		y4 = row - 10;
+
+		k2 = (x3 - x4) / (y3 - y4);
+		printf("\nk2=%d\n", k2);
+		printf("x3=%d x4=%d y3=%d y4=%d\n", x3, x4, y3, y4);
+		for (; row >= 10 && abs(leftside[row] - L_edge[row]) >= 2 && abs(R_edge[row] - rightside[row]) <= 5; row--) //>=2ÊÇÎªÁË±£Ö¤²¹Ïß²»³¬¹ıL_edge
+		{
+			L_edge[row] = L_edge[row + 1] - k2;
+			imgnew[row][L_edge[row]] = 2;
+		}
+	}
+	for (int i = 0; i < 60; i++)
+	{
+		printf("\n");
+		for (j = 0; j < 80; j++)
+			printf("%d ", imgnew[i][j]);
+	}
+}
+
+void judgeFLAG()
+{
+	//FLAG=1,2,3,4,5,6ÒÀ´ÎÎª Ê®×Ö ×ó»·µÀ ÓÒ»·µÀ ÆğÅÜÏß ×óÕÏ°­ ÓÒÕÏ°­
+	printf("flag=%d\n", FLAG);
+	/*	switch(FLAG)
+	{
+		case 1: crossdeal();
+		case 2: circuitdeal_L();
+		case 3: circuitdeal_R();
+		case 4: startlinedeal();
+		case 5: barrierdeal_L();
+		case 6: barrierdeal_R();
+	}*/
+	if (FLAG == 1)
+		crossdeal();
+	/*	else if(FLAG==2) circuitdeal_L();
+	else if(FLAG==3) circuitdeal_R();
+	else if(FLAG==4) startlinedeal();*/
+	else if (FLAG == 5)
+		barrierdeal_L();
+	/*	else if(FLAG==6) barrierdeal_R();*/
 }
