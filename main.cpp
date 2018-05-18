@@ -3,8 +3,7 @@
 #include <math.h>
 
 
-using namespace std;
-
+using namespace std;//test
 
 
 #define WHITE '1'
